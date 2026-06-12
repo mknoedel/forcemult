@@ -101,6 +101,54 @@ async function activate(id, label) {
   return false;
 }
 
+// ---- preflight: verify access + scan the shared instance for collisions ----
+async function preflight() {
+  console.log(`Preflight against ${HOST} (suffix: ${SUFFIX})`);
+  const me = await api('GET', '/workflows?limit=250');
+  if (me.status === 401 || me.status === 403) {
+    console.error(`  ✗ API key rejected (${me.status}). Check N8N_API_KEY / its scopes.`);
+    process.exit(1);
+  }
+  if (!Array.isArray(me.json?.data)) {
+    console.error(`  ✗ unexpected response (${me.status}): ${JSON.stringify(me.json).slice(0, 200)}`);
+    process.exit(1);
+  }
+  const workflows = me.json.data;
+  console.log(`  ✓ API key works — ${workflows.length} workflow(s) visible to you${me.json.nextCursor ? ' (first page)' : ''}`);
+
+  // Webhook paths are unique per INSTANCE: scan visible workflows for clashes.
+  const clashes = [];
+  const dupes = [];
+  for (const wf of workflows) {
+    for (const node of wf.nodes ?? []) {
+      if (node.type === 'n8n-nodes-base.webhook') {
+        const p = node.parameters?.path;
+        if (p === agentPath || p === ingestPath) clashes.push(`"${wf.name}" already uses path ${p}`);
+        if (p === 'capstone-agent' || p === 'capstone-ingest') dupes.push(`"${wf.name}" uses the unsuffixed path ${p}`);
+      }
+    }
+    if (wf.name?.startsWith(`[${SUFFIX}] `)) dupes.push(`"${wf.name}" looks like a previous push with this suffix`);
+  }
+  if (clashes.length) {
+    console.error(`  ✗ path collision — pick a different CAPSTONE_SUFFIX:\n    - ${clashes.join('\n    - ')}`);
+    process.exit(1);
+  }
+  if (dupes.length) {
+    console.log(`  ⚠️  heads-up (not blocking):\n    - ${dupes.join('\n    - ')}`);
+    if (dupes.some((d) => d.includes('previous push'))) {
+      console.error('  ✗ refusing to create duplicates — delete the previous [' + SUFFIX + '] workflows in the UI, or change CAPSTONE_SUFFIX.');
+      process.exit(1);
+    }
+  }
+  console.log(`  ✓ paths ${agentPath} / ${ingestPath} are free (among workflows visible to your key)\n`);
+}
+
+await preflight();
+if (process.argv.includes('--preflight')) {
+  console.log('Preflight-only mode: stopping before any writes.');
+  process.exit(0);
+}
+
 console.log(`Pushing capstone suite to ${HOST} (suffix: ${SUFFIX})\n`);
 
 // 1. credentials --------------------------------------------------------------
