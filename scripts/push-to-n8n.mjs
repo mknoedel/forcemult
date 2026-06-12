@@ -152,30 +152,47 @@ if (process.argv.includes('--preflight')) {
 console.log(`Pushing capstone suite to ${HOST} (suffix: ${SUFFIX})\n`);
 
 // 1. credentials --------------------------------------------------------------
+// Reuse-first: *_CREDENTIAL_ID env vars point at credentials that already
+// exist in your n8n project (find the id in the URL when you open the
+// credential in the UI). Otherwise create from secrets where provided.
 console.log('1) Credentials');
+function reuse(name, id) {
+  console.log(`  ✓ reusing existing ${name} credential → ${id}`);
+  return id;
+}
 const credIds = {
-  REPLACE_OPENROUTER: process.env.OPENROUTER_API_KEY
-    ? await createCredential(`OpenRouter (capstone-${SUFFIX})`, 'openRouterApi', { apiKey: process.env.OPENROUTER_API_KEY, allowedHttpRequestDomains: 'all' })
-    : (console.log('  ⚠️  OPENROUTER_API_KEY not set — attach in UI'), null),
-  REPLACE_ZEP: process.env.ZEP_API_KEY
-    ? await createCredential(`Zep Api-Key (capstone-${SUFFIX})`, 'httpHeaderAuth', { name: 'Authorization', value: `Api-Key ${process.env.ZEP_API_KEY}`, allowedHttpRequestDomains: 'all' })
-    : (console.log('  ⚠️  ZEP_API_KEY not set — attach in UI'), null),
-  REPLACE_WEBHOOK_AUTH: await createCredential(`Capstone Webhook Auth (${SUFFIX})`, 'httpHeaderAuth', { name: 'API_KEY', value: WEBHOOK_SECRET, allowedHttpRequestDomains: 'all' }),
-  REPLACE_POSTGRES: process.env.SUPABASE_DB_HOST
-    ? await createCredential(`Supabase Postgres (capstone-${SUFFIX})`, 'postgres', {
-        host: process.env.SUPABASE_DB_HOST,
-        port: Number(process.env.SUPABASE_DB_PORT || 5432),
-        database: process.env.SUPABASE_DB_NAME || 'postgres',
-        user: process.env.SUPABASE_DB_USER || 'postgres',
-        password: process.env.SUPABASE_DB_PASSWORD || '',
-        allowUnauthorizedCerts: false,
-        ssl: 'require',
-        sshTunnel: false,
-      })
-    : (console.log('  ⚠️  SUPABASE_DB_HOST not set — attach Postgres credential in UI'), null),
-  REPLACE_SUPABASE: process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? await createCredential(`Supabase API (capstone-${SUFFIX})`, 'supabaseApi', { host: process.env.SUPABASE_URL, serviceRole: process.env.SUPABASE_SERVICE_ROLE_KEY, allowedHttpRequestDomains: 'all' })
-    : (console.log('  ⚠️  SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set — attach in UI'), null),
+  REPLACE_OPENROUTER: process.env.OPENROUTER_CREDENTIAL_ID
+    ? reuse('OpenRouter', process.env.OPENROUTER_CREDENTIAL_ID)
+    : process.env.OPENROUTER_API_KEY
+      ? await createCredential(`OpenRouter (capstone-${SUFFIX})`, 'openRouterApi', { apiKey: process.env.OPENROUTER_API_KEY, allowedHttpRequestDomains: 'all' })
+      : (console.log('  ⚠️  OPENROUTER_CREDENTIAL_ID / OPENROUTER_API_KEY not set — attach in UI'), null),
+  REPLACE_ZEP: process.env.ZEP_CREDENTIAL_ID
+    ? reuse('Zep header-auth', process.env.ZEP_CREDENTIAL_ID)
+    : process.env.ZEP_API_KEY
+      ? await createCredential(`Zep Api-Key (capstone-${SUFFIX})`, 'httpHeaderAuth', { name: 'Authorization', value: `Api-Key ${process.env.ZEP_API_KEY}`, allowedHttpRequestDomains: 'all' })
+      : (console.log('  ⚠️  ZEP_API_KEY not set — attach in UI'), null),
+  REPLACE_WEBHOOK_AUTH: process.env.WEBHOOK_AUTH_CREDENTIAL_ID
+    ? reuse('webhook auth', process.env.WEBHOOK_AUTH_CREDENTIAL_ID)
+    : await createCredential(`Capstone Webhook Auth (${SUFFIX})`, 'httpHeaderAuth', { name: 'API_KEY', value: WEBHOOK_SECRET, allowedHttpRequestDomains: 'all' }),
+  REPLACE_POSTGRES: process.env.POSTGRES_CREDENTIAL_ID
+    ? reuse('Postgres', process.env.POSTGRES_CREDENTIAL_ID)
+    : process.env.SUPABASE_DB_HOST
+      ? await createCredential(`Supabase Postgres (capstone-${SUFFIX})`, 'postgres', {
+          host: process.env.SUPABASE_DB_HOST,
+          port: Number(process.env.SUPABASE_DB_PORT || 5432),
+          database: process.env.SUPABASE_DB_NAME || 'postgres',
+          user: process.env.SUPABASE_DB_USER || 'postgres',
+          password: process.env.SUPABASE_DB_PASSWORD || '',
+          allowUnauthorizedCerts: false,
+          ssl: 'require',
+          sshTunnel: false,
+        })
+      : (console.log('  ⚠️  POSTGRES_CREDENTIAL_ID / SUPABASE_DB_HOST not set — attach Postgres credential in UI'), null),
+  REPLACE_SUPABASE: process.env.SUPABASE_CREDENTIAL_ID
+    ? reuse('Supabase API', process.env.SUPABASE_CREDENTIAL_ID)
+    : process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? await createCredential(`Supabase API (capstone-${SUFFIX})`, 'supabaseApi', { host: process.env.SUPABASE_URL, serviceRole: process.env.SUPABASE_SERVICE_ROLE_KEY, allowedHttpRequestDomains: 'all' })
+      : (console.log('  ⚠️  SUPABASE_CREDENTIAL_ID / SUPABASE_URL+SERVICE_ROLE not set — attach in UI'), null),
 };
 
 // 2. workflows in dependency order --------------------------------------------
