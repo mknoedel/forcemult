@@ -8,5 +8,8 @@ import { ZepClient } from '@getzep/zep-cloud';
 export function getZepClient(): ZepClient | null {
   const apiKey = process.env.ZEP_API_KEY;
   if (!apiKey) return null;
-  return new ZepClient({ apiKey });
+  // ZEP_BASE_URL points the SDK at a stand-in server (the local mock harness
+  // in scripts/mocks). Leave unset in production to talk to Zep Cloud.
+  const baseUrl = process.env.ZEP_BASE_URL;
+  return new ZepClient(baseUrl ? { apiKey, environment: baseUrl } : { apiKey });
 }

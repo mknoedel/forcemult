@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: '/test-dashboard', label: 'Tests' },
   { href: '/design', label: 'Design' },
   { href: '/memory', label: 'Memory' },
+  { href: '/knowledge', label: 'Knowledge' },
 ];
 
 function LogoMark() {
