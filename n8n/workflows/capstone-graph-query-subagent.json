@@ -140,7 +140,40 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Combine the two Zep searches into one compact, prompt-ready context block.\nconst query = $('Config').first().json.query;\nconst parseBody = (j) => {\n  if (j && typeof j.data === 'string') {\n    try { return JSON.parse(j.data); } catch { return {}; }\n  }\n  return j || {};\n};\nconst edgeRes = parseBody($('Search Facts (Edges)').first().json);\nconst nodeRes = parseBody($input.first().json);\nconst edges = edgeRes.edges || [];\nconst nodes = nodeRes.nodes || [];\n\nconst fmtDate = (d) => (d ? String(d).slice(0, 10) : null);\nconst lines = [];\n\nif (edges.length) {\n  lines.push('FACTS (relationships from the knowledge graph):');\n  for (const e of edges) {\n    const validity = [];\n    if (e.valid_at || e.validAt) validity.push(`since ${fmtDate(e.valid_at || e.validAt)}`);\n    if (e.invalid_at || e.invalidAt) validity.push(`invalid as of ${fmtDate(e.invalid_at || e.invalidAt)}`);\n    lines.push(`- [${e.name}] ${e.fact}${validity.length ? ' (' + validity.join(', ') + ')' : ''}`);\n  }\n}\n\nif (nodes.length) {\n  lines.push('');\n  lines.push('ENTITIES (nodes from the knowledge graph):');\n  for (const n of nodes) {\n    const labels = (n.labels || []).filter((l) => l !== 'Entity').join(', ');\n    lines.push(`- ${n.name}${labels ? ' [' + labels + ']' : ''}: ${(n.summary || '').slice(0, 300)}`);\n  }\n}\n\nconst response = lines.length\n  ? lines.join('\\n')\n  : `NO_RESULTS: the knowledge graph has no facts or entities matching \"${query}\". Tell the user the graph does not contain this information yet.`;\n\nreturn [{ json: { response } }];"
+        "jsCode": "// Combine the three Zep searches into one compact, prompt-ready context block.\nconst parseBody = (j) => {\n  if (j && typeof j.data === 'string') {\n    try { return JSON.parse(j.data); } catch { return {}; }\n  }\n  return j || {};\n};\nconst query = $('Config').first().json.query;\nconst edges = parseBody($('Search Facts (Edges)').first().json).edges || [];\nconst nodes = parseBody($('Search Entities (Nodes)').first().json).nodes || [];\nconst episodes = parseBody($input.first().json).episodes || [];\n\nconst fmtDate = (d) => (d ? String(d).slice(0, 10) : null);\nconst lines = [];\n\nif (edges.length) {\n  lines.push('FACTS (relationships from the knowledge graph):');\n  for (const e of edges) {\n    const validity = [];\n    if (e.valid_at || e.validAt) validity.push(`since ${fmtDate(e.valid_at || e.validAt)}`);\n    if (e.invalid_at || e.invalidAt) validity.push(`invalid as of ${fmtDate(e.invalid_at || e.invalidAt)}`);\n    lines.push(`- [${e.name}] ${e.fact}${validity.length ? ' (' + validity.join(', ') + ')' : ''}`);\n  }\n}\n\nif (nodes.length) {\n  lines.push('');\n  lines.push('ENTITIES (nodes from the knowledge graph):');\n  for (const n of nodes) {\n    const labels = (n.labels || []).filter((l) => l !== 'Entity').join(', ');\n    lines.push(`- ${n.name}${labels ? ' [' + labels + ']' : ''}: ${(n.summary || '').slice(0, 300)}`);\n  }\n}\n\n// Source excerpts carry fine-grained details (times, numbers) that may not\n// have survived as discrete graph edges.\nif (episodes.length) {\n  lines.push('');\n  lines.push('SOURCE EXCERPTS (verbatim from ingested documents):');\n  for (const ep of episodes) {\n    lines.push(`- \"${(ep.content || '').replace(/\\s+/g, ' ').slice(0, 500)}…\" (${ep.source_description || 'episode'})`);\n  }\n}\n\nconst response = lines.length\n  ? lines.join('\\n')\n  : `NO_RESULTS: the knowledge graph has no facts or entities matching \"${query}\". Tell the user the graph does not contain this information yet.`;\n\nreturn [{ json: { response } }];"
+      }
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d406",
+      "name": "Search Episodes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        880,
+        160
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.zepBaseUrl }}/graph/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'episodes', limit: 2 }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ZEP",
+          "name": "Zep Api-Key (Header Auth)"
+        }
       }
     }
   ],
@@ -179,6 +212,17 @@
       ]
     },
     "Search Entities (Nodes)": {
+      "main": [
+        [
+          {
+            "node": "Search Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Episodes": {
       "main": [
         [
           {
