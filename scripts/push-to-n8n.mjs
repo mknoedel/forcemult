@@ -210,8 +210,11 @@ const credIds = {
           database: process.env.SUPABASE_DB_NAME || 'postgres',
           user: process.env.SUPABASE_DB_USER || 'postgres',
           password: process.env.SUPABASE_DB_PASSWORD || '',
-          allowUnauthorizedCerts: false,
-          ssl: 'require',
+          // Supabase poolers present a cert chain node-postgres can't verify
+          // against default CAs — connection stays TLS, verification is skipped
+          // (the in-class "Ignore SSL Issues" toggle). NOTE: with this flag the
+          // schema prohibits the `ssl` key entirely.
+          allowUnauthorizedCerts: true,
           sshTunnel: false,
         })
       : (console.log('  ⚠️  POSTGRES_CREDENTIAL_ID / SUPABASE_DB_HOST not set — attach Postgres credential in UI'), null),
