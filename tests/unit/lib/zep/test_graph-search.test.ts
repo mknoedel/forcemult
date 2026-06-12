@@ -157,3 +157,41 @@ describe('searchUserGraph', () => {
     });
   });
 });
+
+describe('Zep 404 handling (brand-new user, nothing recorded yet)', () => {
+  it('fetchUserSummary resolves to an empty state instead of throwing', async () => {
+    const getNode = jest.fn().mockRejectedValue(
+      Object.assign(new Error('Status code: 404\nBody: user not found'), {
+        statusCode: 404,
+      })
+    );
+    const client = fakeClient({ getNode });
+    await expect(fetchUserSummary(client, 'user-new')).resolves.toEqual({
+      summary: '',
+      hasSummary: false,
+    });
+  });
+
+  it('searchUserGraph resolves to empty results instead of throwing', async () => {
+    const search = jest.fn().mockRejectedValue(
+      Object.assign(new Error('user graph not found'), { statusCode: 404 })
+    );
+    const client = fakeClient({ search });
+    await expect(searchUserGraph(client, 'user-new', 'q')).resolves.toEqual({
+      context: '',
+      facts: [],
+      entities: [],
+      episodes: [],
+    });
+  });
+
+  it('still throws on real service failures (non-404)', async () => {
+    const getNode = jest.fn().mockRejectedValue(
+      Object.assign(new Error('internal server error'), { statusCode: 500 })
+    );
+    const client = fakeClient({ getNode });
+    await expect(fetchUserSummary(client, 'user-1')).rejects.toThrow(
+      'internal server error'
+    );
+  });
+});

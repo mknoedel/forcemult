@@ -60,9 +60,30 @@ export async function fetchUserSummary(
   client: ZepClient,
   userId: string
 ): Promise<UserMemory> {
-  const result = await client.user.getNode(userId);
-  const summary = (result?.node?.summary ?? '').trim();
-  return { summary, hasSummary: summary.length > 0 };
+  try {
+    const result = await client.user.getNode(userId);
+    const summary = (result?.node?.summary ?? '').trim();
+    return { summary, hasSummary: summary.length > 0 };
+  } catch (error) {
+    // A brand-new user has no Zep record yet — that's an empty state for the
+    // UI ("no memory yet"), not a service failure.
+    if (isZepNotFound(error)) return { summary: '', hasSummary: false };
+    throw error;
+  }
+}
+
+/**
+ * A Zep 404 means the user/graph simply doesn't exist yet (nothing recorded).
+ * The first chat turn creates them (see chat-memory.ts), so callers should
+ * render an empty state rather than an error.
+ */
+function isZepNotFound(error: unknown): boolean {
+  const e = error as { statusCode?: number; status?: number; message?: string };
+  return (
+    e?.statusCode === 404 ||
+    e?.status === 404 ||
+    /not found/i.test(e?.message ?? '')
+  );
 }
 
 function toFact(edge: Zep.EntityEdge): GraphFact {
@@ -105,17 +126,25 @@ export async function searchUserGraph(
   query: string,
   opts?: { maxCharacters?: number }
 ): Promise<GraphSearchResult> {
-  const results = await client.graph.search({
-    userId,
-    query,
-    scope: 'auto',
-    maxCharacters: opts?.maxCharacters ?? DEFAULT_MAX_CHARACTERS,
-    returnRawResults: true,
-  });
-  return {
-    context: results.context ?? '',
-    facts: (results.edges ?? []).map(toFact),
-    entities: (results.nodes ?? []).map(toEntity),
-    episodes: (results.episodes ?? []).map(toEpisode),
-  };
+  try {
+    const results = await client.graph.search({
+      userId,
+      query,
+      scope: 'auto',
+      maxCharacters: opts?.maxCharacters ?? DEFAULT_MAX_CHARACTERS,
+      returnRawResults: true,
+    });
+    return {
+      context: results.context ?? '',
+      facts: (results.edges ?? []).map(toFact),
+      entities: (results.nodes ?? []).map(toEntity),
+      episodes: (results.episodes ?? []).map(toEpisode),
+    };
+  } catch (error) {
+    // A user with no graph yet is an empty result, not an outage.
+    if (isZepNotFound(error)) {
+      return { context: '', facts: [], entities: [], episodes: [] };
+    }
+    throw error;
+  }
 }
