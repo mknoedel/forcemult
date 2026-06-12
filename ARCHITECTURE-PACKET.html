@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Michael Knoedel · MMM, Northwestern University" />
+  <meta name="dcterms.date" content="2026-06-12" />
+  <title>DSGN-497 Architecture Packet</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">DSGN-497 Architecture Packet</h1>
+<p class="author">Michael Knoedel · MMM, Northwestern University</p>
+<p class="date">June 12, 2026</p>
+</header>
+<h1 id="dsgn-497-capstone-path-b-agentic-software-build">DSGN-497
+Capstone — Path B: Agentic Software Build</h1>
+<p><strong>Claude Code + n8n + Zep Knowledge Graph · two channels (app +
+email) · orchestration, evals, and guardrails integrated</strong></p>
+<p>This repo is the full Path B capstone: a Next.js app (built on John’s
+<code>mmm-cc-nextjs-template</code>), a five-workflow n8n suite, a Zep
+knowledge graph as the agent’s second brain, an ingestion pipeline with
+its own UI, and an email channel. Everything below was verified
+end-to-end locally against a real n8n instance (20/20 workflow checks,
+8/8 app checks, 298 unit/integration tests) using a mock LLM + mock Zep;
+the only things that need your real accounts are listed in <a
+href="./SETUP-CAPSTONE.md">SETUP-CAPSTONE.md</a>.</p>
+<hr />
+<h2 id="architecture">Architecture</h2>
+<p><strong>Component flow (diagram rendered in the repo’s
+CAPSTONE.md):</strong></p>
+<ul>
+<li>Chat UI (<code>/chat</code>) → <code>/api/chat</code> → n8n
+<strong>Chat Agent (Orchestrator)</strong> webhook (<code>API_KEY</code>
+header) → input guardrails → agent (Postgres session memory) →
+<strong>Graph Query Subagent</strong> (tool) → <strong>Zep</strong>
+<code>capstone-kg</code> graph → output sanitizer → reply</li>
+<li>Knowledge UI (<code>/knowledge</code>) → <code>/api/ingest</code> →
+n8n <strong>Knowledge Ingestion Pipeline</strong> webhook → guardrails →
+extraction subagent → dedupe/upsert vs live graph → Zep fact triples +
+episodes → transparent report back to the UI;
+<code>/api/graph/search</code> reads the same graph for the
+explorer</li>
+<li>Gmail inbox → n8n <strong>Email Channel</strong> (poll trigger) →
+guardrails → email agent (per-sender memory, same Graph Query Subagent
+tool) → sanitizer → Gmail reply → mark read</li>
+<li>n8n <strong>Eval Runner</strong> (manual) → Google Sheets dataset →
+calls the production chat webhook per case → LLM-as-judge → appends
+scored rows to <code>eval_results</code></li>
+<li>Supabase: app auth + <code>n8n_chat_sessions</code> (sidebar) +
+<code>n8n_chat_histories</code> (agent memory)</li>
+</ul>
+<p><strong>The five n8n workflows</strong>
+(<code>n8n/workflows/</code>):</p>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 16%" />
+<col style="width: 68%" />
+</colgroup>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>Trigger</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>capstone-chat-agent.json</code></td>
+<td>Webhook (<code>/capstone-agent</code>, header-auth)</td>
+<td>The orchestrator. Session upsert → input guardrails → agent
+(Postgres memory + graph tool) → output sanitization → respond.</td>
+</tr>
+<tr>
+<td><code>capstone-graph-query-subagent.json</code></td>
+<td>Execute-workflow trigger</td>
+<td>The shared <strong>graph-query subagent</strong>: two Zep searches
+(edges + nodes) formatted into a compact FACTS/ENTITIES block. Called as
+a tool by both agents.</td>
+</tr>
+<tr>
+<td><code>capstone-ingestion-pipeline.json</code></td>
+<td>Webhook (<code>/capstone-ingest</code>, header-auth)</td>
+<td>Guardrails → <strong>extraction subagent</strong> (structured JSON)
+→ entity dedupe against the live graph → Zep fact triples + episodes →
+transparent report.</td>
+</tr>
+<tr>
+<td><code>capstone-email-channel.json</code></td>
+<td>Gmail trigger (unread, <code>-from:me</code>)</td>
+<td>Email guardrails → <strong>email agent</strong> (per-sender memory,
+same graph tool, cold-start prompt) → PII/secret sanitization → Gmail
+reply → mark read.</td>
+</tr>
+<tr>
+<td><code>capstone-eval-runner.json</code></td>
+<td>Manual</td>
+<td>Reads the Google Sheets dataset, calls the production chat webhook
+per case, judges with a skeptical LLM judge
+(<code>{score, pass, justification}</code>), appends to
+<code>eval_results</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-knowledge-graph-the-heart-of-path-b">The knowledge graph
+(the heart of Path B)</h2>
+<ul>
+<li><strong>One shared standalone Zep graph</strong>
+(<code>capstone-kg</code>), separate from the template’s per-user memory
+graphs. The agent’s “memory of the world” is collective; the user-graph
+memory remains personal context. That separation is deliberate: ingest
+once, every channel and every user benefits.</li>
+<li><strong>Writes</strong> happen only through the ingestion pipeline:
+the extraction subagent produces
+<code>{entities[], relationships[]}</code>; relationships become
+explicit <strong>fact triples</strong>
+(<code>POST /graph/add-fact-triple</code>) so the graph edges carry
+typed relations (FOUNDED, ACQUIRED, TEACHES…); the raw text is also
+stored as <strong>episodes</strong>, so Zep’s own temporal extraction
+keeps enriching the graph asynchronously and the source stays
+retrievable verbatim.</li>
+<li><strong>Dedupe / upsert</strong> (the task-list upsert problem,
+applied to nodes): before writing, each extracted entity is searched
+against the graph (<code>scope: nodes</code>); a normalized-name match
+reuses the existing node’s UUID — the triple attaches to the
+<em>existing</em> node (“merged”) instead of minting a duplicate. The
+ingestion report shows the merge decision per entity, and re-ingesting
+the same document produces <code>merged == entities, created == 0</code>
+(verified in the test harness).</li>
+<li><strong>Updates / contradictions</strong>: handled at two levels —
+Zep’s bi-temporal model invalidates contradicted facts from new episodes
+(<code>valid_at</code>/<code>invalid_at</code>), and the graph-query
+subagent surfaces those validity windows to the agent so it can prefer
+current facts.</li>
+<li><strong>Reads</strong> happen through the Graph Query Subagent
+(edges + nodes searches, RRF-ranked, formatted for the prompt) — one
+implementation, used by both channels.</li>
+</ul>
+<h2 id="two-channels">Two channels</h2>
+<p><strong>App</strong> — the template’s chat UI calls
+<code>/api/chat</code>, which proxies to the orchestrator webhook with
+the shared <code>API_KEY</code> header. The <code>/knowledge</code> page
+is the ingestion UI (paste or upload <code>.txt</code>/<code>.md</code>,
+watch the extraction report) plus a read-only explorer over the
+<em>same</em> graph the agent queries.</p>
+<p><strong>Email</strong> — the Gmail trigger polls unread mail,
+guardrails screen the subject+body, the email agent answers grounded in
+the same graph, replies in-thread as plain text, and marks the message
+read (the read-status flip is the reprocessing guard). Email-specific
+decisions: cold-start prompt (a reply must stand alone), per-sender
+memory keyed <code>email-&lt;address&gt;</code> (continuity across
+emails without a session UI), plain-text formatting with a fixed
+signature, and stricter injection screening because email is a
+public-ish entry point.</p>
+<h2
+id="orchestration-evals-guardrails-carried-forward-not-bolted-on">Orchestration,
+evals, guardrails (carried forward, not bolted on)</h2>
+<ul>
+<li><strong>Orchestration</strong>: orchestrator agent → graph-query
+subagent (tool workflow) and extraction subagent (ingestion chain); the
+email agent is a second persona over the same subagent. Models follow
+the class multi-LLM pattern: <code>anthropic/claude-sonnet-4.6</code>
+for agents, <code>openai/gpt-5-mini</code> for guardrail checks/utility
+chains, and a <em>different-family</em> judge for evals — all via
+OpenRouter.</li>
+<li><strong>Evals</strong>: the eval runner mirrors John’s Runner+Judge
+pattern — 12-case dataset (<code>eval/eval_dataset.csv</code>) across
+four dimensions (<code>correctness</code>, <code>graph_grounding</code>,
+<code>guardrail_safety</code>, <code>honesty</code>), judged 1–5 with
+<code>pass = score ≥ 4</code>, results appended to the sheet with
+justifications. It calls the <strong>production webhook</strong>, so it
+exercises the same path the app uses — guardrails included.</li>
+<li><strong>Guardrails</strong> (same primitives, different deployment
+points than evals — eval measures after, guardrail blocks before):
+<ul>
+<li><em>Input rails, both channels</em>: jailbreak (LLM, threshold
+0.75), custom prompt-injection rail (LLM, 0.7), secret-key detector.
+Fail branch returns/replies a refusal naming the tripped rail.</li>
+<li><em>Ingestion rail</em>: secret-key scan before any model sees the
+document (HTTP 422 with reason).</li>
+<li><em>Output rails, both channels</em>: sanitize-mode redaction of
+credit cards / SSNs / bank numbers / IPs / secret keys before the
+response leaves the system.</li>
+<li><em>Channel auth</em>: both webhooks require the
+<code>API_KEY</code> header (matching the template’s contract).</li>
+</ul></li>
+</ul>
+<h2 id="trade-offs-the-things-john-actually-grades">Trade-offs (the
+things John actually grades)</h2>
+<ol type="1">
+<li><strong>Why a separate graph-query subagent workflow instead of an
+inline HTTP tool?</strong> One implementation shared by two agents,
+independently testable, and its executions are visible in n8n — you can
+<em>show</em> the subagent being called in the demo. Cost: one
+cross-workflow reference to re-select after import.</li>
+<li><strong>Why explicit fact triples <em>and</em> episodes, not just
+<code>graph.add</code>?</strong> Triples make the extraction step
+demonstrable and give us control over dedupe (UUID reuse); episodes keep
+provenance and let Zep’s temporal engine catch what our extractor
+misses. Pure episode ingestion would hide the “agent earns its keep”
+extraction step; pure triples would lose source text and temporal
+invalidation.</li>
+<li><strong>Why dedupe by normalized-name search instead of trusting Zep
+alone?</strong> It makes the upsert decision <em>ours</em> and
+<em>visible</em> (the report labels merged vs new). Trade-off:
+near-duplicates with different surface forms (“J. Renaldi”) still rely
+on Zep’s resolution — acceptable, and the canonical-name rule in the
+extraction prompt minimizes it.</li>
+<li><strong>Why <code>responseMode: responseNode</code> instead of token
+streaming?</strong> Deterministic guardrails: you cannot sanitize a
+stream you’ve already sent, and the refusal branch needs to answer
+through the same webhook. We trade streaming UX for enforceable output
+rails (the template’s UI handles non-streamed text fine).</li>
+<li><strong>Why the eval runner calls the production webhook instead of
+n8n’s native evaluation trigger?</strong> It tests the real deployed
+path (auth, guardrails, agent, graph) exactly as users hit it, works on
+any plan, and matches John’s current Runner+Judge template. Trade-off:
+no native Evaluations-tab charts; scores live in the sheet.</li>
+<li><strong>Why per-sender memory for email but per-session for
+chat?</strong> Email has no session UI — the sender address <em>is</em>
+the session. Chat sessions come from the app sidebar contract
+(<code>n8n_chat_sessions</code>).</li>
+<li><strong>Why two LLM tiers?</strong> Guardrail checks and utility
+chains run constantly and need low latency/cost
+(<code>gpt-5-mini</code>); agent reasoning gets the stronger model; the
+judge stays a different family from the generator to reduce
+self-preference bias (Module 3).</li>
+<li><strong>Why the document node + MENTIONED_IN fallback in
+extraction?</strong> Guarantees every entity is connected (no orphan
+nodes), gives provenance edges for free, and makes “what did this
+document teach the graph?” answerable.</li>
+</ol>
+<h2 id="what-flat-rag-wouldnt-have-given-us-reflection-seed">What flat
+RAG wouldn’t have given us (reflection seed)</h2>
+<ul>
+<li>“Who founded Jiobit and what happened to it?” is answered from
+<strong>two typed edges</strong> (<code>FOUNDED</code>,
+<code>ACQUIRED</code>) that can come from <em>different documents</em> —
+chunk retrieval only answers it if some single chunk happens to contain
+both facts.</li>
+<li>Dedupe means the second document about John Renaldi <strong>enriches
+the same node</strong> instead of creating a competing chunk; the graph
+accumulates a single evolving picture per entity (the E2E run shows
+<code>merged: 3</code> when the guest-speaker doc mentions entities the
+instructor bio created).</li>
+<li>Bi-temporal facts (<code>valid_at</code>/<code>invalid_at</code>)
+give the agent a way to answer “as of when?” — embeddings have no notion
+of a fact being superseded.</li>
+<li>The two-channel design forced decisions a single chat UI never
+would: cold-start prompting, per-sender identity, plain-text output
+discipline, reply-loop guards, and treating inbound email as untrusted
+input with harder injection screening.</li>
+</ul>
+<h2
+id="verification-what-was-tested-without-real-credentials">Verification
+(what was tested without real credentials)</h2>
+<ul>
+<li><code>scripts/verify/run-local-verification.sh</code> — spins a real
+n8n in Docker, imports all five workflows, wires mock credentials (mock
+OpenRouter LLM + mock Zep on :4545, local Supabase Postgres), publishes,
+and runs 20 assertions: ingestion E2E + dedupe-on-reingest + guardrail
+block + webhook auth + graph-grounded chat + session/memory rows +
+injection refusals on both channels + the full eval loop.
+<strong>20/20.</strong></li>
+<li><code>scripts/verify/run-app-e2e.sh</code> — boots the real Next.js
+app against that stack and verifies auth gating, the Knowledge page,
+ingestion through the app, the graph explorer, and graph-grounded +
+guardrail-refused chat through <code>/api/chat</code>.
+<strong>8/8.</strong></li>
+<li><code>npm test</code> (298 tests), <code>npm run type-check</code>,
+<code>npm run lint</code>, <code>npm run test:coverage</code> (≥80%
+global), <code>npm run build</code> — all green.</li>
+</ul>
+<p>What still needs <em>your</em> accounts (one-time, ~20 min): Zep API
+key, OpenRouter key, the Northwestern n8n import + credential picks, the
+eval Google Sheet, and the Gmail OAuth for the email channel —
+step-by-step in <a href="./SETUP-CAPSTONE.md">SETUP-CAPSTONE.md</a>,
+demo plan in <a href="./DEMO-SCRIPT.md">DEMO-SCRIPT.md</a>.</p>
+<h2 id="ai-use-disclosure">AI Use Disclosure</h2>
+<p>Built with <strong>Claude Code (Claude Fable 5)</strong> operating
+autonomously over the instructor-provided
+<code>mmm-cc-nextjs-template</code>: it authored the five n8n workflow
+JSONs, the Knowledge page + API routes + tests, the mock LLM/Zep harness
+and verification scripts, the eval dataset, and this documentation; it
+verified everything against a local n8n + Supabase + mock stack before
+handoff. Prompts: the Path B assignment text, the course syllabus, class
+Slack excerpts, and John’s example workflows (eval Runner+Judge,
+Multi-Agent template) as pattern references. Models inside the product:
+<code>anthropic/claude-sonnet-4.6</code> (agents),
+<code>openai/gpt-5-mini</code> (guardrails, utility chains, judge) via
+OpenRouter. Human-owned: account credentials, the Northwestern n8n
+import, the recorded demo, and final narrative edits.</p>
+</body>
+</html>
