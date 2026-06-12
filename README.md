@@ -1,3 +1,16 @@
+# DSGN-497 Capstone — Path B (built on the MMM starter template)
+
+> **Start here:** [CAPSTONE.md](./CAPSTONE.md) (architecture + trade-offs + reflection) ·
+> [SETUP-CAPSTONE.md](./SETUP-CAPSTONE.md) (go-live checklist) ·
+> [DEMO-SCRIPT.md](./DEMO-SCRIPT.md) (recording plan) ·
+> [n8n/README.md](./n8n/README.md) (workflow suite + local verification).
+> Capstone additions: the `/knowledge` ingestion UI + shared-graph explorer, `app/api/ingest`
+>
+> - `app/api/graph/search`, `lib/zep/domain-graph.ts`, the five workflows in `n8n/workflows/`,
+>   the eval dataset + seed docs in `eval/`, and the mock + verification harness in `scripts/`.
+
+---
+
 # Northwestern MMM & MPD2 — Next.js Starter Template
 
 A production-ready **Next.js 16** starter for Northwestern MMM and MPD2 master's students. It comes

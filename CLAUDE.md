@@ -57,6 +57,11 @@ app/
 │   │   └── route.ts  # Proxy the request to the n8n workflow and stream its reply back.
 │   ├── client-errors/
 │   │   └── route.ts  # Receives client-side crash reports and records them server-side via the
+│   ├── graph/
+│   │   └── search/
+│   │       └── route.ts  # POST /api/graph/search — search the SHARED domain knowledge graph (the
+│   ├── ingest/
+│   │   └── route.ts  # POST /api/ingest — hand a document to the n8n Knowledge Ingestion Pipeline
 │   ├── memory/
 │   │   ├── search/
 │   │   │   └── route.ts  # POST /api/memory/search — run an auto graph search over the signed-in user's
@@ -108,6 +113,12 @@ app/
 │   │   ├── TypeAndShapeSection.tsx  # Typography scale and shape (corner radius) reference. Shows the three real
 │   │   └── WhyDesignSystemsSection.tsx  # Frames the *problem* before any solution: what an interface looks like with no
 │   └── page.tsx
+├── knowledge/
+│   ├── components/
+│   │   ├── DomainGraphExplorer.tsx  # Read-only window into the SHARED domain graph (the agent's second brain).
+│   │   ├── IngestPanel.tsx  # The ingestion front-end: submit a document (paste or .txt/.md upload), send
+│   │   └── sample-queries.ts  # Starter queries for the shared domain graph explorer.
+│   └── page.tsx
 ├── login/
 │   ├── actions.ts  # Email/password sign-in. Called as a form action from /login.
 │   └── page.tsx
@@ -158,6 +169,7 @@ lib/
 ├── zep/
 │   ├── chat-memory.ts  # Fetch the user's long-term context for a thread, plus (when `userId` is
 │   ├── client.ts  # Returns a Zep client when ZEP_API_KEY is set, otherwise null so the chat
+│   ├── domain-graph.ts  # Helpers for the SHARED domain knowledge graph (the capstone's "second
 │   ├── graph-search.ts  # Shared Zep helpers for the /memory learning page. Unlike the chat-memory
 │   ├── identity.ts  # Map a Supabase user to the fields Zep's user.add expects.
 │   └── stream-capture.ts  # A pass-through transform that accumulates the streamed assistant text and,
@@ -184,6 +196,8 @@ types/
 | `app/page.tsx` |  | `HomePage` |
 | `app/api/chat/route.ts` | Proxy the request to the n8n workflow and stream its reply back. | `maxDuration`, `POST` |
 | `app/api/client-errors/route.ts` | Receives client-side crash reports and records them server-side via the | `POST` |
+| `app/api/graph/search/route.ts` | POST /api/graph/search — search the SHARED domain knowledge graph (the | `POST` |
+| `app/api/ingest/route.ts` | POST /api/ingest — hand a document to the n8n Knowledge Ingestion Pipeline | `maxDuration`, `POST` |
 | `app/api/memory/search/route.ts` | POST /api/memory/search — run an auto graph search over the signed-in user's | `POST` |
 | `app/api/memory/summary/route.ts` | GET /api/memory/summary — return the signed-in user's long-term memory (their | `GET` |
 | `app/api/tasks/route.ts` |  | `GET`, `POST` |
@@ -217,6 +231,10 @@ types/
 | `app/design/components/EnforcementSection.tsx` | Explains, for non-technical students, why hard-coded styles create | `EnforcementSection` |
 | `app/design/components/TypeAndShapeSection.tsx` | Typography scale and shape (corner radius) reference. Shows the three real | `TypeAndShapeSection` |
 | `app/design/components/WhyDesignSystemsSection.tsx` | Frames the *problem* before any solution: what an interface looks like with no | `WhyDesignSystemsSection` |
+| `app/knowledge/page.tsx` |  | `metadata`, `KnowledgePage` |
+| `app/knowledge/components/DomainGraphExplorer.tsx` | Read-only window into the SHARED domain graph (the agent's second brain). | `DomainGraphExplorer` |
+| `app/knowledge/components/IngestPanel.tsx` | The ingestion front-end: submit a document (paste or .txt/.md upload), send | `IngestPanel` |
+| `app/knowledge/components/sample-queries.ts` | Starter queries for the shared domain graph explorer. | `DOMAIN_SAMPLE_QUERIES` |
 | `app/login/actions.ts` | Email/password sign-in. Called as a form action from /login. | `login`, `signup` |
 | `app/login/page.tsx` |  | `LoginPage`, `default` |
 | `app/memory/page.tsx` |  | `metadata`, `MemoryPage` |
@@ -255,6 +273,7 @@ types/
 | `lib/supabase/server.ts` | Supabase client for use on the server: Server Components, Route Handlers, and | `createClient` |
 | `lib/zep/chat-memory.ts` | Fetch the user's long-term context for a thread, plus (when `userId` is | `retrieveUserContext`, `ChatTurn`, `recordChatTurn` |
 | `lib/zep/client.ts` | Returns a Zep client when ZEP_API_KEY is set, otherwise null so the chat | `getZepClient` |
+| `lib/zep/domain-graph.ts` | Helpers for the SHARED domain knowledge graph (the capstone's "second | `DEFAULT_GRAPH_ID`, `getDomainGraphId`, `DomainGraphSearchResult`, `searchDomainGraph` |
 | `lib/zep/graph-search.ts` | Shared Zep helpers for the /memory learning page. Unlike the chat-memory | `UserMemory`, `GraphFact`, `GraphEntity`, `GraphEpisode`, `GraphSearchResult` |
 | `lib/zep/identity.ts` | Map a Supabase user to the fields Zep's user.add expects. | `ZepUserFields`, `toZepUser`, `displayName` |
 | `lib/zep/stream-capture.ts` | A pass-through transform that accumulates the streamed assistant text and, | `createCaptureStream` |
