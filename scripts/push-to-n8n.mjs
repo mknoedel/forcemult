@@ -100,6 +100,23 @@ async function upsertWorkflow(wf, namePrefix) {
     settings: wf.settings || { executionOrder: 'v1' },
   };
   const existing = existingByName.get(name);
+  if (existing?.nodes) {
+    // Preserve UI-side wiring across updates: OAuth credentials attached in
+    // the editor (Gmail, Sheets) and resource selections where our repo JSON
+    // only ships a placeholder.
+    const prevByName = new Map(existing.nodes.map((n) => [n.name, n]));
+    for (const node of body.nodes) {
+      const prev = prevByName.get(node.name);
+      if (!prev) continue;
+      if (!node.credentials && prev.credentials) node.credentials = prev.credentials;
+      for (const key of ['documentId', 'sheetName']) {
+        const cur = node.parameters?.[key];
+        if (cur && typeof cur.value === 'string' && cur.value.includes('REPLACE_WITH') && prev.parameters?.[key]) {
+          node.parameters[key] = prev.parameters[key];
+        }
+      }
+    }
+  }
   const r = existing
     ? await api('PUT', `/workflows/${existing.id}`, body)
     : await api('POST', '/workflows', body);
