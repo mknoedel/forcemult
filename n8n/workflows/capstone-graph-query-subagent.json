@@ -80,7 +80,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'edges', limit: 12 }) }}",
+        "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'edges', limit: 18 }) }}",
         "options": {
           "response": {
             "response": {
