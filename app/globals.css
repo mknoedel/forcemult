@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Studio Bauhaus — warm cream surfaces, Northwestern purple as primary */
+    --background: 40 33% 92%;
+    --foreground: 30 18% 9%;
+    --card: 40 40% 96%;
+    --card-foreground: 30 18% 9%;
+    --popover: 40 40% 96%;
+    --popover-foreground: 30 18% 9%;
+    --primary: 264 52% 34%; /* Northwestern Purple #4E2A84 */
+    --primary-foreground: 40 40% 97%;
+    --secondary: 40 28% 85%;
+    --secondary-foreground: 30 20% 14%;
+    --muted: 40 26% 87%;
+    --muted-foreground: 30 8% 38%;
+    --accent: 40 28% 85%;
+    --accent-foreground: 30 20% 14%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 40% 97%;
+    --border: 36 22% 80%;
+    --input: 36 22% 80%;
+    --ring: 264 52% 34%;
+    --radius: 0.75rem;
+
+    /* Studio accent palette (paired with *-foreground for contrast) */
+    --gold: 41 88% 56%;
+    --gold-foreground: 30 30% 12%;
+    --coral: 14 82% 56%;
+    --coral-foreground: 30 30% 12%;
+    --teal: 167 64% 33%;
+    --teal-foreground: 40 40% 97%;
+
+    --chart-1: 264 52% 34%;
+    --chart-2: 167 64% 33%;
+    --chart-3: 41 88% 56%;
+    --chart-4: 14 82% 56%;
+    --chart-5: 264 32% 56%;
+  }
+
+  .dark {
+    /* Warm charcoal surfaces, brighter purple for contrast */
+    --background: 30 10% 9%;
+    --foreground: 40 30% 92%;
+    --card: 30 9% 12%;
+    --card-foreground: 40 30% 92%;
+    --popover: 30 9% 12%;
+    --popover-foreground: 40 30% 92%;
+    --primary: 263 58% 66%;
+    --primary-foreground: 30 20% 10%;
+    --secondary: 30 8% 18%;
+    --secondary-foreground: 40 30% 92%;
+    --muted: 30 8% 18%;
+    --muted-foreground: 40 10% 62%;
+    --accent: 30 8% 18%;
+    --accent-foreground: 40 30% 92%;
+    --destructive: 0 62% 47%;
+    --destructive-foreground: 40 40% 97%;
+    --border: 30 8% 22%;
+    --input: 30 8% 22%;
+    --ring: 263 58% 66%;
+
+    --gold: 41 82% 62%;
+    --gold-foreground: 30 30% 10%;
+    --coral: 14 80% 63%;
+    --coral-foreground: 30 30% 10%;
+    --teal: 167 52% 50%;
+    --teal-foreground: 30 30% 10%;
+
+    --chart-1: 263 58% 66%;
+    --chart-2: 167 52% 50%;
+    --chart-3: 41 82% 62%;
+    --chart-4: 14 80% 63%;
+    --chart-5: 263 40% 76%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+}

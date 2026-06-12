@@ -1,0 +1,17 @@
+.next
+out
+build
+coverage
+node_modules
+package-lock.json
+next-env.d.ts
+
+# Partly auto-generated (AUTO:tree / AUTO:modules maintained by scripts/generate-docs.js)
+CLAUDE.md
+# Symlink to CLAUDE.md
+AGENTS.md
+
+# Vendored Superpowers skills — mirror of github.com/obra/superpowers. Keep
+# byte-identical to upstream so the update-superpowers-skills workflow produces
+# clean diffs. Managed by scripts/sync-superpowers-skills.sh.
+.claude/vendor/

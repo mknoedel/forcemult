@@ -1,0 +1,13 @@
+CURRENT_SHA=$(git rev-parse HEAD)
+
+if [ -f .test-passed ] && grep -q "$CURRENT_SHA" .test-passed; then
+  echo "Tests already passed for $CURRENT_SHA, skipping..."
+else
+  npm run validate && npm test && echo "$CURRENT_SHA" > .test-passed
+fi
+
+npm audit --audit-level=moderate || true
+
+# Design-system lint — warn-only: surfaces DESIGN.md issues but never blocks a
+# push (the @google/design.md CLI is an npx call that may be offline/unreachable).
+npm run design:lint || echo "⚠  design:lint reported issues or could not run — not blocking. Run 'npm run design:lint' for details."

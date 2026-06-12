@@ -1,0 +1,42 @@
+name: Update Superpowers skills
+
+# Vendors the latest Superpowers skills (github.com/obra/superpowers) into
+# .claude/skills/ and opens a PR when anything changed. Runs weekly and on
+# demand. The skills are committed (not fetched at session start), so this PR is
+# the single, reviewable place upstream changes enter the template.
+#
+# Requires: Settings -> Actions -> General -> Workflow permissions ->
+# "Allow GitHub Actions to create and approve pull requests" (enabled).
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor latest Superpowers skills
+        run: bash scripts/sync-superpowers-skills.sh
+
+      - name: Open a PR if the skills changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/update-superpowers-skills
+          delete-branch: true
+          commit-message: "chore: update vendored Superpowers skills"
+          title: "chore: update vendored Superpowers skills"
+          labels: dependencies
+          body: |
+            Automated refresh of the vendored Superpowers skills in `.claude/skills/`
+            from https://github.com/obra/superpowers (latest `main`).
+
+            These skills are committed (not fetched at runtime), so this PR is the
+            review gate for upstream changes. Review the diff before merging.
