@@ -57,6 +57,12 @@ if (process.argv.includes('--seed')) {
   }
   const dir = path.join(process.cwd(), 'eval', 'seed-documents');
   for (const file of fs.readdirSync(dir)) {
+    // demo-* documents are reserved for LIVE ingestion during the recording —
+    // seeding them would spoil the new-vs-merged beat.
+    if (file.startsWith('demo-')) {
+      console.log(`· skipping ${file} (reserved for live demo)`);
+      continue;
+    }
     const text = fs.readFileSync(path.join(dir, file), 'utf8');
     const title = text.match(/^#\s*(.+)$/m)?.[1] ?? file;
     process.stdout.write(`→ ingesting "${title}" … `);
