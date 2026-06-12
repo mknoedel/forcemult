@@ -1,0 +1,182 @@
+{
+  "id": "CapGraphQuery001",
+  "name": "Capstone — Graph Query Subagent",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d401",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d402",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "zepBaseUrl",
+              "value": "https://api.getzep.com/api/v2",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "graphId",
+              "value": "capstone-kg",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "query",
+              "value": "={{ ($json.query || '').toString().slice(0, 380) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d403",
+      "name": "Search Facts (Edges)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        440,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.zepBaseUrl }}/graph/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'edges', limit: 12 }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ZEP",
+          "name": "Zep Api-Key (Header Auth)"
+        }
+      }
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d404",
+      "name": "Search Entities (Nodes)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        660,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.zepBaseUrl }}/graph/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'nodes', limit: 8 }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ZEP",
+          "name": "Zep Api-Key (Header Auth)"
+        }
+      }
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d405",
+      "name": "Format Graph Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Combine the two Zep searches into one compact, prompt-ready context block.\nconst query = $('Config').first().json.query;\nconst edgeRes = $('Search Facts (Edges)').first().json || {};\nconst nodeRes = $input.first().json || {};\nconst edges = edgeRes.edges || [];\nconst nodes = nodeRes.nodes || [];\n\nconst fmtDate = (d) => (d ? String(d).slice(0, 10) : null);\nconst lines = [];\n\nif (edges.length) {\n  lines.push('FACTS (relationships from the knowledge graph):');\n  for (const e of edges) {\n    const validity = [];\n    if (e.valid_at || e.validAt) validity.push(`since ${fmtDate(e.valid_at || e.validAt)}`);\n    if (e.invalid_at || e.invalidAt) validity.push(`invalid as of ${fmtDate(e.invalid_at || e.invalidAt)}`);\n    lines.push(`- [${e.name}] ${e.fact}${validity.length ? ' (' + validity.join(', ') + ')' : ''}`);\n  }\n}\n\nif (nodes.length) {\n  lines.push('');\n  lines.push('ENTITIES (nodes from the knowledge graph):');\n  for (const n of nodes) {\n    const labels = (n.labels || []).filter((l) => l !== 'Entity').join(', ');\n    lines.push(`- ${n.name}${labels ? ' [' + labels + ']' : ''}: ${(n.summary || '').slice(0, 300)}`);\n  }\n}\n\nconst response = lines.length\n  ? lines.join('\\n')\n  : `NO_RESULTS: the knowledge graph has no facts or entities matching \"${query}\". Tell the user the graph does not contain this information yet.`;\n\nreturn [{ json: { response } }];"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Search Facts (Edges)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Facts (Edges)": {
+      "main": [
+        [
+          {
+            "node": "Search Entities (Nodes)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Entities (Nodes)": {
+      "main": [
+        [
+          {
+            "node": "Format Graph Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
