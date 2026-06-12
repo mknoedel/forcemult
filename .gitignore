@@ -143,3 +143,5 @@ dist
 
 # Local design exploration / scratch mockups (not part of the app)
 design-proposals/
+# capstone push secrets (never commit)
+.env.capstone
