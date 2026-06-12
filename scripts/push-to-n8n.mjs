@@ -74,20 +74,38 @@ function personalize(wf, credIds) {
   s = s.replaceAll('"capstone-ingest"', `"${ingestPath}"`);
   s = s.replaceAll('https://REPLACE-WITH-YOUR-N8N-HOST/webhook/capstone-agent', `${HOST}/webhook/${agentPath}`);
   for (const [ph, id] of Object.entries(credIds)) if (id) s = s.replaceAll(ph, id);
-  return JSON.parse(s);
+  const out = JSON.parse(s);
+  // Cloud instances reject workflows referencing credential ids you can't
+  // access — strip any still-unresolved placeholders (OAuth creds get
+  // attached by hand in the UI afterwards).
+  for (const node of out.nodes) {
+    if (!node.credentials) continue;
+    for (const [type, ref] of Object.entries(node.credentials)) {
+      if (typeof ref?.id === 'string' && ref.id.startsWith('REPLACE_')) delete node.credentials[type];
+    }
+    if (Object.keys(node.credentials).length === 0) delete node.credentials;
+  }
+  return out;
 }
 
-async function createWorkflow(wf, namePrefix) {
+// name → existing workflow (filled by preflight) so re-runs update in place.
+const existingByName = new Map();
+
+async function upsertWorkflow(wf, namePrefix) {
+  const name = `${namePrefix}${wf.name}`;
   const body = {
-    name: `${namePrefix}${wf.name}`,
+    name,
     nodes: wf.nodes,
     connections: wf.connections,
     settings: wf.settings || { executionOrder: 'v1' },
   };
-  let r = await api('POST', '/workflows', body);
-  let data = r.json;
-  if (!data?.id) throw new Error(`workflow create failed (${wf.name}): ${r.status} ${JSON.stringify(r.json).slice(0, 300)}`);
-  console.log(`  ✓ "${body.name}" → ${data.id}`);
+  const existing = existingByName.get(name);
+  const r = existing
+    ? await api('PUT', `/workflows/${existing.id}`, body)
+    : await api('POST', '/workflows', body);
+  const data = r.json;
+  if (!data?.id) throw new Error(`workflow ${existing ? 'update' : 'create'} failed (${name}): ${r.status} ${JSON.stringify(r.json).slice(0, 300)}`);
+  console.log(`  ✓ ${existing ? 'updated' : 'created'} "${name}" → ${data.id}`);
   return data;
 }
 
@@ -102,6 +120,15 @@ async function activate(id, label) {
 }
 
 // ---- preflight: verify access + scan the shared instance for collisions ----
+const prefix = process.env.CAPSTONE_NAME_PREFIX ?? `[${SUFFIX}] `;
+const WORKFLOW_FILES = [
+  'capstone-graph-query-subagent.json',
+  'capstone-chat-agent.json',
+  'capstone-ingestion-pipeline.json',
+  'capstone-email-channel.json',
+  'capstone-eval-runner.json',
+];
+
 async function preflight() {
   console.log(`Preflight against ${HOST} (suffix: ${SUFFIX})`);
   const me = await api('GET', '/workflows?limit=250');
@@ -116,31 +143,31 @@ async function preflight() {
   const workflows = me.json.data;
   console.log(`  ✓ API key works — ${workflows.length} workflow(s) visible to you${me.json.nextCursor ? ' (first page)' : ''}`);
 
-  // Webhook paths are unique per INSTANCE: scan visible workflows for clashes.
-  const clashes = [];
-  const dupes = [];
+  // Our five target names: a re-run updates these in place instead of duplicating.
+  const targetNames = new Set(WORKFLOW_FILES.map((f) => `${prefix}${loadWf(f).name}`));
   for (const wf of workflows) {
+    if (targetNames.has(wf.name)) {
+      existingByName.set(wf.name, wf);
+      console.log(`  · found previous "${wf.name}" (${wf.id}) — will update in place`);
+    }
+  }
+
+  // Webhook paths are unique per INSTANCE: scan OTHER workflows for clashes.
+  const clashes = [];
+  for (const wf of workflows) {
+    if (targetNames.has(wf.name)) continue;
     for (const node of wf.nodes ?? []) {
       if (node.type === 'n8n-nodes-base.webhook') {
         const p = node.parameters?.path;
         if (p === agentPath || p === ingestPath) clashes.push(`"${wf.name}" already uses path ${p}`);
-        if (p === 'capstone-agent' || p === 'capstone-ingest') dupes.push(`"${wf.name}" uses the unsuffixed path ${p}`);
       }
     }
-    if (wf.name?.startsWith(`[${SUFFIX}] `)) dupes.push(`"${wf.name}" looks like a previous push with this suffix`);
   }
   if (clashes.length) {
     console.error(`  ✗ path collision — pick a different CAPSTONE_SUFFIX:\n    - ${clashes.join('\n    - ')}`);
     process.exit(1);
   }
-  if (dupes.length) {
-    console.log(`  ⚠️  heads-up (not blocking):\n    - ${dupes.join('\n    - ')}`);
-    if (dupes.some((d) => d.includes('previous push'))) {
-      console.error('  ✗ refusing to create duplicates — delete the previous [' + SUFFIX + '] workflows in the UI, or change CAPSTONE_SUFFIX.');
-      process.exit(1);
-    }
-  }
-  console.log(`  ✓ paths ${agentPath} / ${ingestPath} are free (among workflows visible to your key)\n`);
+  console.log(`  ✓ paths ${agentPath} / ${ingestPath} are clear (among workflows visible to your key)\n`);
 }
 
 await preflight();
@@ -197,13 +224,12 @@ const credIds = {
 
 // 2. workflows in dependency order --------------------------------------------
 console.log('\n2) Workflows');
-const prefix = process.env.CAPSTONE_NAME_PREFIX ?? `[${SUFFIX}] `;
-const graph = await createWorkflow(personalize(loadWf('capstone-graph-query-subagent.json'), credIds), prefix);
+const graph = await upsertWorkflow(personalize(loadWf('capstone-graph-query-subagent.json'), credIds), prefix);
 const fixRef = (wf) => JSON.parse(JSON.stringify(wf).replaceAll('CapGraphQuery001', graph.id));
-const chat = await createWorkflow(fixRef(personalize(loadWf('capstone-chat-agent.json'), credIds)), prefix);
-const ingest = await createWorkflow(personalize(loadWf('capstone-ingestion-pipeline.json'), credIds), prefix);
-const email = await createWorkflow(fixRef(personalize(loadWf('capstone-email-channel.json'), credIds)), prefix);
-const evalr = await createWorkflow(personalize(loadWf('capstone-eval-runner.json'), credIds), prefix);
+const chat = await upsertWorkflow(fixRef(personalize(loadWf('capstone-chat-agent.json'), credIds)), prefix);
+const ingest = await upsertWorkflow(personalize(loadWf('capstone-ingestion-pipeline.json'), credIds), prefix);
+const email = await upsertWorkflow(fixRef(personalize(loadWf('capstone-email-channel.json'), credIds)), prefix);
+const evalr = await upsertWorkflow(personalize(loadWf('capstone-eval-runner.json'), credIds), prefix);
 
 // 3. publish what can run without OAuth ----------------------------------------
 console.log('\n3) Publish');

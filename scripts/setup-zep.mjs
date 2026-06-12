@@ -21,6 +21,15 @@ if (!apiKey) {
 const baseUrl = process.env.ZEP_BASE_URL;
 const zep = new ZepClient(baseUrl ? { apiKey, environment: baseUrl } : { apiKey });
 
+if (process.argv.includes('--reset')) {
+  try {
+    await zep.graph.delete(GRAPH_ID);
+    console.log(`· deleted existing graph "${GRAPH_ID}" (reset)`);
+  } catch (e) {
+    console.log(`· nothing to reset (${String(e?.message ?? e).slice(0, 80)})`);
+  }
+}
+
 try {
   const graph = await zep.graph.create({
     graphId: GRAPH_ID,

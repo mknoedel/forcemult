@@ -367,7 +367,10 @@ zepRouter.post('/graph/add-fact-triple', (req, res) => {
     episodes: [],
   };
   zep.edges.push(edge);
-  res.json({ edge, source_node: source, target_node: target });
+  // Mirror REAL Zep Cloud behavior (observed 2026-06): fact triples are
+  // processed asynchronously — the API acks with a task id and null nodes/edge.
+  // (State above is still updated immediately so searches find the data.)
+  res.json({ task_id: crypto.randomUUID(), edge: null, source_node: null, target_node: null });
 });
 
 zepRouter.post('/graph/search', (req, res) => {

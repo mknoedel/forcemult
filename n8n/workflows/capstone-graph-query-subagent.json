@@ -81,7 +81,13 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'edges', limit: 12 }) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -108,7 +114,13 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $('Config').first().json.query, scope: 'nodes', limit: 8 }) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -128,7 +140,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Combine the two Zep searches into one compact, prompt-ready context block.\nconst query = $('Config').first().json.query;\nconst edgeRes = $('Search Facts (Edges)').first().json || {};\nconst nodeRes = $input.first().json || {};\nconst edges = edgeRes.edges || [];\nconst nodes = nodeRes.nodes || [];\n\nconst fmtDate = (d) => (d ? String(d).slice(0, 10) : null);\nconst lines = [];\n\nif (edges.length) {\n  lines.push('FACTS (relationships from the knowledge graph):');\n  for (const e of edges) {\n    const validity = [];\n    if (e.valid_at || e.validAt) validity.push(`since ${fmtDate(e.valid_at || e.validAt)}`);\n    if (e.invalid_at || e.invalidAt) validity.push(`invalid as of ${fmtDate(e.invalid_at || e.invalidAt)}`);\n    lines.push(`- [${e.name}] ${e.fact}${validity.length ? ' (' + validity.join(', ') + ')' : ''}`);\n  }\n}\n\nif (nodes.length) {\n  lines.push('');\n  lines.push('ENTITIES (nodes from the knowledge graph):');\n  for (const n of nodes) {\n    const labels = (n.labels || []).filter((l) => l !== 'Entity').join(', ');\n    lines.push(`- ${n.name}${labels ? ' [' + labels + ']' : ''}: ${(n.summary || '').slice(0, 300)}`);\n  }\n}\n\nconst response = lines.length\n  ? lines.join('\\n')\n  : `NO_RESULTS: the knowledge graph has no facts or entities matching \"${query}\". Tell the user the graph does not contain this information yet.`;\n\nreturn [{ json: { response } }];"
+        "jsCode": "// Combine the two Zep searches into one compact, prompt-ready context block.\nconst query = $('Config').first().json.query;\nconst parseBody = (j) => {\n  if (j && typeof j.data === 'string') {\n    try { return JSON.parse(j.data); } catch { return {}; }\n  }\n  return j || {};\n};\nconst edgeRes = parseBody($('Search Facts (Edges)').first().json);\nconst nodeRes = parseBody($input.first().json);\nconst edges = edgeRes.edges || [];\nconst nodes = nodeRes.nodes || [];\n\nconst fmtDate = (d) => (d ? String(d).slice(0, 10) : null);\nconst lines = [];\n\nif (edges.length) {\n  lines.push('FACTS (relationships from the knowledge graph):');\n  for (const e of edges) {\n    const validity = [];\n    if (e.valid_at || e.validAt) validity.push(`since ${fmtDate(e.valid_at || e.validAt)}`);\n    if (e.invalid_at || e.invalidAt) validity.push(`invalid as of ${fmtDate(e.invalid_at || e.invalidAt)}`);\n    lines.push(`- [${e.name}] ${e.fact}${validity.length ? ' (' + validity.join(', ') + ')' : ''}`);\n  }\n}\n\nif (nodes.length) {\n  lines.push('');\n  lines.push('ENTITIES (nodes from the knowledge graph):');\n  for (const n of nodes) {\n    const labels = (n.labels || []).filter((l) => l !== 'Entity').join(', ');\n    lines.push(`- ${n.name}${labels ? ' [' + labels + ']' : ''}: ${(n.summary || '').slice(0, 300)}`);\n  }\n}\n\nconst response = lines.length\n  ? lines.join('\\n')\n  : `NO_RESULTS: the knowledge graph has no facts or entities matching \"${query}\". Tell the user the graph does not contain this information yet.`;\n\nreturn [{ json: { response } }];"
       }
     }
   ],

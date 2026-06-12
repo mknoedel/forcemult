@@ -231,7 +231,13 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, query: $json.name.slice(0, 380), scope: 'nodes', limit: 5 }) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -251,7 +257,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// The upsert step: match extracted entities against existing graph nodes by\n// normalized name. Matched entities reuse the existing node UUID (merge);\n// unmatched ones will be created by Zep when the fact triple is written.\nconst entities = $('Plan Entity Lookups').all().map((i) => i.json);\nconst searches = $input.all().map((i) => i.json);\nconst extraction = $('Extraction Subagent').first().json.output || {};\nconst relationships = Array.isArray(extraction.relationships) ? extraction.relationships : [];\nconst cfg = $('Config').first().json;\nconst norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();\n\nconst entityMap = {};\nconst entityReport = [];\nfor (let i = 0; i < entities.length; i++) {\n  const e = entities[i];\n  if (e.name === '__none__') continue;\n  const found = ((searches[i] || {}).nodes || []).find((n) => norm(n.name) === e.norm);\n  const resolved = {\n    name: found ? found.name : e.name,\n    uuid: found ? found.uuid : null,\n    type: e.type,\n    summary: e.summary,\n    status: found ? 'merged' : 'new',\n  };\n  entityMap[e.norm] = resolved;\n  entityReport.push(resolved);\n}\n\nconst sanitizeRelation = (r) => (r || 'RELATED_TO').toString().toUpperCase().replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'RELATED_TO';\n\nconst triples = [];\nfor (const rel of relationships) {\n  const s = entityMap[norm(rel.source)];\n  const t = entityMap[norm(rel.target)];\n  const sourceName = s ? s.name : (rel.source || '').toString().slice(0, 120);\n  const targetName = t ? t.name : (rel.target || '').toString().slice(0, 120);\n  if (!sourceName || !targetName) continue;\n  const triple = {\n    graph_id: cfg.graphId,\n    fact: (rel.fact || `${sourceName} ${sanitizeRelation(rel.relation).toLowerCase().replace(/_/g, ' ')} ${targetName}.`).toString().slice(0, 600),\n    fact_name: sanitizeRelation(rel.relation),\n    source_node_name: sourceName,\n    target_node_name: targetName,\n  };\n  if (s && s.uuid) triple.source_node_uuid = s.uuid;\n  if (t && t.uuid) triple.target_node_uuid = t.uuid;\n  if (s && !s.uuid && s.summary) triple.source_node_summary = s.summary;\n  if (t && !t.uuid && t.summary) triple.target_node_summary = t.summary;\n  triples.push(triple);\n}\n\n// Chunk the raw text into <=8000-char episodes on paragraph boundaries so the\n// source document is also retrievable verbatim (and Zep runs its own\n// extraction over it for anything our subagent missed).\nconst episodes = [];\nconst text = cfg.text || '';\nlet buf = '';\nfor (const para of text.split(/\\n\\n+/)) {\n  if ((buf + '\\n\\n' + para).length > 8000 && buf) {\n    episodes.push(buf);\n    buf = para;\n  } else {\n    buf = buf ? buf + '\\n\\n' + para : para;\n  }\n}\nif (buf.trim()) episodes.push(buf);\n\nreturn [{\n  json: {\n    triples,\n    episodes: episodes.map((data, idx) => ({\n      data: data.slice(0, 9500),\n      source_description: `${cfg.title} (part ${idx + 1}/${episodes.length}, via ${cfg.source})`,\n    })),\n    entityReport,\n    counts: { entities: entityReport.length, relationships: triples.length, episodes: episodes.length },\n  },\n}];"
+        "jsCode": "// The upsert step: match extracted entities against existing graph nodes by\n// normalized name. Matched entities reuse the existing node UUID (merge);\n// unmatched ones will be created by Zep when the fact triple is written.\nconst entities = $('Plan Entity Lookups').all().map((i) => i.json);\nconst parseBody = (j) => {\n  if (j && typeof j.data === 'string') {\n    try { return JSON.parse(j.data); } catch { return {}; }\n  }\n  return j || {};\n};\nconst searches = $input.all().map((i) => parseBody(i.json));\nconst extraction = $('Extraction Subagent').first().json.output || {};\nconst relationships = Array.isArray(extraction.relationships) ? extraction.relationships : [];\nconst cfg = $('Config').first().json;\nconst norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();\n\nconst entityMap = {};\nconst entityReport = [];\nfor (let i = 0; i < entities.length; i++) {\n  const e = entities[i];\n  if (e.name === '__none__') continue;\n  const found = ((searches[i] || {}).nodes || []).find((n) => norm(n.name) === e.norm);\n  const resolved = {\n    name: found ? found.name : e.name,\n    uuid: found ? found.uuid : null,\n    type: e.type,\n    summary: e.summary,\n    status: found ? 'merged' : 'new',\n  };\n  entityMap[e.norm] = resolved;\n  entityReport.push(resolved);\n}\n\nconst sanitizeRelation = (r) => (r || 'RELATED_TO').toString().toUpperCase().replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'RELATED_TO';\n\nconst triples = [];\nfor (const rel of relationships) {\n  const s = entityMap[norm(rel.source)];\n  const t = entityMap[norm(rel.target)];\n  const sourceName = s ? s.name : (rel.source || '').toString().slice(0, 120);\n  const targetName = t ? t.name : (rel.target || '').toString().slice(0, 120);\n  if (!sourceName || !targetName) continue;\n  const triple = {\n    graph_id: cfg.graphId,\n    fact: (rel.fact || `${sourceName} ${sanitizeRelation(rel.relation).toLowerCase().replace(/_/g, ' ')} ${targetName}.`).toString().slice(0, 600),\n    fact_name: sanitizeRelation(rel.relation),\n    source_node_name: sourceName,\n    target_node_name: targetName,\n  };\n  if (s && s.uuid) triple.source_node_uuid = s.uuid;\n  if (t && t.uuid) triple.target_node_uuid = t.uuid;\n  if (s && !s.uuid && s.summary) triple.source_node_summary = s.summary;\n  if (t && !t.uuid && t.summary) triple.target_node_summary = t.summary;\n  triples.push(triple);\n}\n\n// Chunk the raw text into <=8000-char episodes on paragraph boundaries so the\n// source document is also retrievable verbatim (and Zep runs its own\n// extraction over it for anything our subagent missed).\nconst episodes = [];\nconst text = cfg.text || '';\nlet buf = '';\nfor (const para of text.split(/\\n\\n+/)) {\n  if ((buf + '\\n\\n' + para).length > 8000 && buf) {\n    episodes.push(buf);\n    buf = para;\n  } else {\n    buf = buf ? buf + '\\n\\n' + para : para;\n  }\n}\nif (buf.trim()) episodes.push(buf);\n\nreturn [{\n  json: {\n    triples,\n    episodes: episodes.map((data, idx) => ({\n      data: data.slice(0, 9500),\n      source_description: `${cfg.title} (part ${idx + 1}/${episodes.length}, via ${cfg.source})`,\n    })),\n    entityReport,\n    counts: { entities: entityReport.length, relationships: triples.length, episodes: episodes.length },\n  },\n}];"
       }
     },
     {
@@ -319,7 +325,13 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -398,7 +410,13 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ graph_id: $('Config').first().json.graphId, type: 'text', data: $json.data, source_description: $json.source_description }) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -418,7 +436,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Transparent ingestion: report exactly what landed in the graph.\nconst cfg = $('Config').first().json;\nconst resolve = $('Resolve & Build Payloads').first().json;\nconst tripleResults = $('Write Fact Triple (Upsert)').all().map((i) => i.json);\nconst episodeResults = $input.all().map((i) => i.json);\n\nconst byName = {};\nfor (const r of tripleResults) {\n  for (const n of [r.source_node, r.target_node]) {\n    if (n && n.name) byName[n.name.toLowerCase()] = n.uuid;\n  }\n}\n\nconst entities = resolve.entityReport.map((e) => ({\n  name: e.name,\n  type: e.type,\n  summary: e.summary,\n  status: e.status,\n  uuid: e.uuid || byName[(e.name || '').toLowerCase()] || null,\n}));\n\nconst relationships = tripleResults\n  .filter((r) => r.edge)\n  .map((r) => ({\n    relation: r.edge.name,\n    fact: r.edge.fact,\n    source: r.source_node ? r.source_node.name : null,\n    target: r.target_node ? r.target_node.name : null,\n    uuid: r.edge.uuid,\n  }));\n\nconst failures = tripleResults.filter((r) => !r.edge).length;\n\nreturn [{\n  json: {\n    ok: true,\n    graphId: cfg.graphId,\n    title: cfg.title,\n    entities,\n    relationships,\n    episodes: episodeResults.map((e) => e.uuid).filter(Boolean),\n    stats: {\n      entities: entities.length,\n      created: entities.filter((e) => e.status === 'new').length,\n      merged: entities.filter((e) => e.status === 'merged').length,\n      relationships: relationships.length,\n      episodes: episodeResults.length,\n      failedWrites: failures,\n    },\n    message: `Ingested \"${cfg.title}\": ${entities.length} entities (${entities.filter((e) => e.status === 'merged').length} merged with existing nodes), ${relationships.length} relationships, ${episodeResults.length} episode(s). Zep continues processing episodes asynchronously.`,\n  },\n}];"
+        "jsCode": "// Transparent ingestion: report exactly what was sent to the graph.\n// NOTE: Zep processes fact triples ASYNCHRONOUSLY — an accepted write returns\n// {task_id, edge: null}. We therefore report relationships from the triples we\n// sent (authoritative), and count a write as failed only when Zep returned\n// neither an edge nor a task id.\nconst parseBody = (j) => {\n  if (j && typeof j.data === 'string') {\n    try { return JSON.parse(j.data); } catch { return {}; }\n  }\n  return j || {};\n};\nconst cfg = $('Config').first().json;\nconst resolve = $('Resolve & Build Payloads').first().json;\nconst tripleResults = $('Write Fact Triple (Upsert)').all().map((i) => parseBody(i.json));\nconst episodeResults = $input.all().map((i) => parseBody(i.json));\n\nconst results = resolve.triples.map((t, i) => {\n  const r = tripleResults[i] || {};\n  return {\n    ...t,\n    ok: !!(r.edge || r.task_id),\n    edgeUuid: r.edge ? r.edge.uuid : null,\n  };\n});\nconst failures = results.filter((r) => !r.ok).length;\n\n// Synchronous responses (mock / future Zep) may include resolved nodes.\nconst byName = {};\nfor (const r of tripleResults) {\n  for (const n of [r.source_node, r.target_node]) {\n    if (n && n.name) byName[n.name.toLowerCase()] = n.uuid;\n  }\n}\n\nconst entities = resolve.entityReport.map((e) => ({\n  name: e.name,\n  type: e.type,\n  summary: e.summary,\n  status: e.status,\n  uuid: e.uuid || byName[(e.name || '').toLowerCase()] || null,\n}));\n\nconst relationships = results\n  .filter((r) => r.ok)\n  .map((r) => ({\n    relation: r.fact_name,\n    fact: r.fact,\n    source: r.source_node_name,\n    target: r.target_node_name,\n    uuid: r.edgeUuid,\n  }));\n\nreturn [{\n  json: {\n    ok: true,\n    graphId: cfg.graphId,\n    title: cfg.title,\n    entities,\n    relationships,\n    episodes: episodeResults.map((e) => e.uuid).filter(Boolean),\n    stats: {\n      entities: entities.length,\n      created: entities.filter((e) => e.status === 'new').length,\n      merged: entities.filter((e) => e.status === 'merged').length,\n      relationships: relationships.length,\n      episodes: episodeResults.length,\n      failedWrites: failures,\n    },\n    message: `Ingested \"${cfg.title}\": ${entities.length} entities (${entities.filter((e) => e.status === 'merged').length} merged with existing nodes), ${relationships.length} relationships queued, ${episodeResults.length} episode(s). Zep continues processing asynchronously.`,\n  },\n}];"
       }
     },
     {
