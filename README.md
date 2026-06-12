@@ -4,10 +4,10 @@
 > [SETUP-CAPSTONE.md](./SETUP-CAPSTONE.md) (go-live checklist) ·
 > [DEMO-SCRIPT.md](./DEMO-SCRIPT.md) (recording plan) ·
 > [n8n/README.md](./n8n/README.md) (workflow suite + local verification).
-> Capstone additions: the `/knowledge` ingestion UI + shared-graph explorer, `app/api/ingest`
->
-> - `app/api/graph/search`, `lib/zep/domain-graph.ts`, the five workflows in `n8n/workflows/`,
->   the eval dataset + seed docs in `eval/`, and the mock + verification harness in `scripts/`.
+> Capstone additions: the `/knowledge` ingestion UI + shared-graph explorer, the
+> `app/api/ingest` and `app/api/graph/search` routes, `lib/zep/domain-graph.ts`, the five
+> workflows in `n8n/workflows/`, the eval dataset + seed docs in `eval/`, and the mock +
+> verification harness in `scripts/`.
 
 ---
 
